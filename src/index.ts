@@ -69,6 +69,32 @@ export const readSketchFile = async (filePath: string) => {
   }
 }
 
+export const readSketchFileData = async (filePath: string) => {
+  const data = await readFile(filePath)
+  const zip = await jszip.loadAsync(data)
+
+  const pagesPromises: Promise<FileFormat.Page>[] = []
+  zip
+    .folder('pages')
+    .forEach(relativePath =>
+      pagesPromises.push(readAndParseFileInZip(zip, `pages/${relativePath}`)),
+    )
+
+  const [document, meta, user, pages] = await Promise.all([
+    readAndParseFileInZip<FileFormat.Document>(zip, 'document.json'),
+    readAndParseFileInZip<FileFormat.Meta>(zip, 'meta.json'),
+    readAndParseFileInZip<FileFormat.User>(zip, 'user.json'),
+    Promise.all(pagesPromises),
+  ])
+
+  return {
+    document,
+    meta,
+    user,
+    pages
+  }
+}
+
 type Content =
   | {
       document: FileFormat1.Document
